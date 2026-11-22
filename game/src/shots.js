@@ -1,79 +1,97 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward from a
-// fresh world for a fixed number of steps, steered by a simple autopilot (look ahead each way the
-// paddle could move, keep clear of blocks, chase the lowest coin when that is safe), so the frame
-// is what a short game really looks like and the same seed always gives the same frame.
-import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, KIND_BLOCK } from './world.js';
-import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+// shots.js — the screenshot scenes behind ?shot=start|play|alarm|win.
+// Each preset stages a real game state (positions, alarm, loot, mode) so a
+// still frame shows exactly what a played moment looks like. The game
+// itself is unchanged: without ?shot= it starts on the title screen.
+import { thiefSpawnPoint } from './world.js';
 
-const START_SECONDS = 5;
-const PLAY_SECONDS = 26;
-const END_LIMIT_SECONDS = 600;
-/**
- * How far ahead, in seconds, the autopilot checks each way it could move: the play scene's pilot
- * looks well ahead and keeps all its lives; the end scene's looks only a moment ahead, so it is
- * caught out once the blocks speed up, as a hurried player is.
- */
-const HORIZON_PLAY = 0.7;
-const HORIZON_END = 0.25;
-const SAMPLE = 1 / 30;
-const DIRECTIONS = [0, -1, 1];
-/** Extra room, each side, it keeps between the paddle and a block. */
-const MARGIN = 10;
-
-/** Seconds until moving in `direction` (-1, 0, 1) runs the paddle into a block; Infinity when it never does. */
-function timeToHit(state, direction, horizon) {
-  const player = state.player;
-  for (let t = SAMPLE; t <= horizon; t += SAMPLE) {
-    const x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * t));
-    for (let index = 0; index < state.items.length; index += 1) {
-      const item = state.items[index];
-      if (!item.active || item.kind !== KIND_BLOCK) continue;
-      const y = item.y + item.speed * t;
-      if (y + item.height > player.y && y < player.y + player.height && item.x < x + player.width + MARGIN && item.x + item.width > x - MARGIN) return t;
-    }
-  }
-  return Infinity;
+function placeThief(state, x, y, angle, hasLoot) {
+  state.thief.x = x;
+  state.thief.y = y;
+  state.thief.angle = angle;
+  state.thief.hasLoot = hasLoot;
 }
 
-/** Of the safe ways to move, the one toward the lowest coin (or the centre); else the one that is hit last. */
-function autopilot(state, horizon) {
-  const player = state.player;
-  let coin = null;
-  for (let index = 0; index < state.items.length; index += 1) {
-    const item = state.items[index];
-    if (item.active && item.kind !== KIND_BLOCK && (coin === null || item.y > coin.y)) coin = item;
+/** Stage one of the four screenshot scenes on a fresh state. Returns true when a shot was staged. */
+export function applyShotPreset(state, name) {
+  if (name === 'start') {
+    // Title screen over the full room: thief at the door, guards mid-patrol,
+    // cameras mid-sweep, diamond glowing in its vitrine, alarm at zero.
+    state.mode = 'start';
+    state.alarm = 0;
+    state.alarmMode = false;
+    state.lockdown = 0;
+    placeThief(state, 102, 566, -Math.PI / 2, false);
+    state.guards[0].x = 420; state.guards[0].y = 122; state.guards[0].angle = 0;
+    state.guards[1].x = 320; state.guards[1].y = 520; state.guards[1].angle = 0;
+    state.guards[2].x = 850; state.guards[2].y = 380; state.guards[2].angle = Math.PI;
+    state.cameras[0].angle = Math.PI / 2 + 0.5;
+    state.cameras[1].angle = Math.PI - 0.4;
+    return true;
   }
-  const target = coin === null ? FIELD.width / 2 : coin.x + coin.width / 2;
-  const centre = player.x + player.width / 2;
-  const wanted = target > centre + 8 ? 1 : target < centre - 8 ? -1 : 0;
-  let best = wanted;
-  let bestTime = timeToHit(state, wanted, horizon);
-  for (let index = 0; index < DIRECTIONS.length && bestTime !== Infinity; index += 1) {
-    const time = timeToHit(state, DIRECTIONS[index], horizon);
-    if (time > bestTime) {
-      bestTime = time;
-      best = DIRECTIONS[index];
-    }
+  if (name === 'play') {
+    // Mid-heist: thief crouched behind the middle case, a guard cone sweeping
+    // close, alarm half full, diamond still in the glass.
+    state.mode = 'playing';
+    state.alarm = 55;
+    state.alarmMode = false;
+    state.lockdown = 0;
+    state.elapsed = 47;
+    placeThief(state, 470, 360, -Math.PI / 2, false);
+    state.guards[0].x = 560; state.guards[0].y = 200; state.guards[0].angle = Math.PI / 2;
+    state.guards[1].x = 300; state.guards[1].y = 430; state.guards[1].angle = Math.PI / 2;
+    state.guards[2].x = 760; state.guards[2].y = 420; state.guards[2].angle = Math.PI;
+    state.guards[0].seesThief = true;
+    state.cameras[0].angle = Math.PI / 2 - 0.6;
+    state.cameras[1].angle = Math.PI + 0.5;
+    return true;
   }
-  return best;
+  if (name === 'alarm') {
+    // The caught moment: alarm full, lockdown ticking, a guard chasing the
+    // thief who already has the diamond and is sprinting for the door.
+    state.mode = 'playing';
+    state.alarm = 100;
+    state.alarmMode = true;
+    state.lockdown = 4.2;
+    state.elapsed = 96;
+    state.peakAlarm = 100;
+    placeThief(state, 250, 520, Math.PI, true);
+    state.guards[0].x = 330; state.guards[0].y = 470; state.guards[0].angle = Math.PI * 0.85;
+    state.guards[0].mode = 'chase';
+    state.guards[0].seesThief = true;
+    state.guards[1].x = 480; state.guards[1].y = 520; state.guards[1].angle = Math.PI;
+    state.guards[1].mode = 'chase';
+    state.guards[2].x = 700; state.guards[2].y = 420; state.guards[2].angle = Math.PI * 0.75;
+    state.guards[2].mode = 'chase';
+    state.cameras[0].angle = Math.PI / 2 + 0.7;
+    state.cameras[1].angle = Math.PI - 0.7;
+    return true;
+  }
+  if (name === 'win') {
+    // The getaway: thief in the green exit doorway, diamond secured, the
+    // ESCAPED panel up, alarm cooled back down.
+    state.mode = 'won';
+    state.alarm = 32;
+    state.alarmMode = false;
+    state.lockdown = 0;
+    state.elapsed = 128;
+    state.peakAlarm = 88;
+    const spawn = thiefSpawnPoint();
+    placeThief(state, spawn.x, spawn.y, Math.PI / 2, true);
+    state.guards[0].x = 420; state.guards[0].y = 222; state.guards[0].angle = Math.PI;
+    state.guards[1].x = 500; state.guards[1].y = 380; state.guards[1].angle = -Math.PI / 2;
+    state.guards[2].x = 850; state.guards[2].y = 300; state.guards[2].angle = Math.PI / 2;
+    state.cameras[0].angle = Math.PI / 2 - 0.4;
+    state.cameras[1].angle = Math.PI + 0.3;
+    return true;
+  }
+  return false;
 }
 
-/**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
- */
-export function stageShot(name, world) {
-  world.reset();
-  if (name !== 'play' && name !== 'end') {
-    for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, 0, true);
-    return { screen: SCREEN_TITLE, best: 0 };
+/** Read ?shot= from the page URL, if one was given. */
+export function readShotFromUrl() {
+  try {
+    return new URLSearchParams(window.location.search).get('shot') ?? '';
+  } catch {
+    return '';
   }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
-  const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
-  for (let index = 0; index < limit / STEP; index += 1) {
-    if (world.step(STEP, autopilot(world.state, horizon), false) & EVENT_OVER) break;
-  }
-  const over = world.state.lives === 0;
-  return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
 }

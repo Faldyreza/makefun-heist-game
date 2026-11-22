@@ -1,61 +1,64 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// config.js — every tunable number for MIDNIGHT VAULT in one place.
+// One job: constants. No logic, no drawing, no input.
+export const CANVAS_WIDTH = 960;
+export const CANVAS_HEIGHT = 640;
+export const HUD_HEIGHT = 48;
+export const WALL = 16;
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
+// Playable room interior (inside the gold-trimmed walls, below the HUD bar).
+export const ROOM = { left: 32, top: 72, right: 928, bottom: 608 };
 
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
-export const STEP = 1 / 60;
+export const THIEF_SPEED = 175;
+export const THIEF_RADIUS = 13;
+export const THIEF_SPAWN = { x: 102, y: 566 };
 
-export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+export const GUARD_PATROL_SPEED = 56;
+export const GUARD_CHASE_SPEED = 118;
+export const GUARD_RADIUS = 14;
+export const GUARD_VISION_RANGE = 205;
+export const GUARD_VISION_HALF_ANGLE = Math.PI / 5.2; // about 35 degrees
+export const GUARD_TURN_SPEED = 5.2; // radians per second
+
+export const CAMERA_RANGE = 235;
+export const CAMERA_HALF_ANGLE = Math.PI / 7; // about 26 degrees
+export const CAMERA_SWEEP_SPEED = 0.55; // radians per second
+
+export const ALARM_GUARD_RATE = 42; // alarm points per second while a guard sees the thief
+export const ALARM_CAMERA_RATE = 30; // alarm points per second while a camera sees the thief
+export const ALARM_DECAY_RATE = 7; // alarm points per second while hidden
+export const ALARM_MAX = 100;
+export const LOCKDOWN_SECONDS = 6; // seconds to escape once the alarm is full
+export const LOOT_ALARM_BUMP = 10; // smashing the vitrine glass makes noise
+export const LOOT_GRAB_RADIUS = 48;
+export const CATCH_RADIUS = 24;
+
+export const COLORS = {
+  floorDark: '#141824',
+  floorLight: '#1a2032',
+  floorLine: '#232a3d',
+  wall: '#0c0e16',
+  wallTrim: '#c9a227',
+  gold: '#e8c34a',
+  goldDim: '#8a6d1f',
+  glass: '#9fd8e8',
+  exitGreen: '#2fd47a',
+  exitDark: '#0e5c31',
+  thief: '#2b2f3a',
+  thiefHood: '#e8c34a',
+  guard: '#31456e',
+  guardCap: '#1d2c4d',
+  coneGuard: 'rgba(232, 195, 74, 0.28)',
+  coneGuardEdge: 'rgba(232, 195, 74, 0.55)',
+  coneCamera: 'rgba(255, 84, 64, 0.26)',
+  coneCameraEdge: 'rgba(255, 84, 64, 0.6)',
+  diamond: '#aef3ff',
+  diamondCore: '#ffffff',
+  hudBg: '#0b0d14',
+  hudText: '#f2ead2',
+  hudMuted: '#9aa3b8',
+  alarmLow: '#2fd47a',
+  alarmMid: '#e8c34a',
+  alarmHigh: '#ff5440',
+  danger: '#ff5440',
+  panel: 'rgba(8, 10, 18, 0.82)',
 };
-
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
-};
-
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
-};
-
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
-
-export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
-};
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
